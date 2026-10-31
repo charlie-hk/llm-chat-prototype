@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     api_key: str = ""
     system_prompt: str = "You are a helpful, concise assistant."
     max_history: int = 20
+    rate_limit_per_min: int = 15
+    static_dir: str = "../frontend/dist"
     cors_origins: str = "http://localhost:5173"
 
     @property

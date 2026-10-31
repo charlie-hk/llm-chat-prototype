@@ -1,0 +1,36 @@
+name: Deploy to Hugging Face Space
+
+# Manual only: run it from the Actions tab after the Space and secrets exist.
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assemble Space tree and push
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE: Alexhkm/llm-chat-prototype
+        run: |
+          if [ -z "$HF_TOKEN" ]; then
+            echo "HF_TOKEN secret is missing. Add it in repo Settings > Secrets and variables > Actions." >&2
+            exit 1
+          fi
+
+          # The Space repo = app code + a Docker README header (not the GitHub README).
+          mkdir -p tree
+          cp -r backend frontend Dockerfile .dockerignore tree/
+          cp deploy/space-README.md tree/README.md
+
+          cd tree
+          git init -q
+          git config user.email "deploy@github"
+          git config user.name "deploy"
+          git add -A
+          git commit -q -m "Deploy from GitHub ${GITHUB_SHA::7}"
+          git push --force "https://Alexhkm:${HF_TOKEN}@huggingface.co/spaces/${HF_SPACE}" HEAD:main
+
+          echo "Pushed. The Space will build the Docker image and go live shortly."

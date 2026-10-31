@@ -1,9 +1,13 @@
 import json
+import time
+from collections import defaultdict, deque
 from collections.abc import AsyncIterator
+from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
 from app.providers.base import ProviderError
@@ -27,6 +31,22 @@ def sse(event: dict) -> str:
     return f"data: {json.dumps(event)}\n\n"
 
 
+# Light per-IP rate limit so a public demo can't exhaust the free quota.
+_hits: dict[str, deque] = defaultdict(deque)
+
+
+def rate_limited(ip: str) -> bool:
+    now = time.monotonic()
+    window, limit = 60.0, settings.rate_limit_per_min
+    q = _hits[ip]
+    while q and now - q[0] > window:
+        q.popleft()
+    if len(q) >= limit:
+        return True
+    q.append(now)
+    return False
+
+
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
@@ -39,7 +59,14 @@ def config():
 
 
 @app.post("/api/chat")
-async def chat(req: ChatRequest):
+async def chat(req: ChatRequest, request: Request):
+    client = request.client.host if request.client else "unknown"
+    if rate_limited(client):
+        return JSONResponse(
+            {"detail": "Too many messages, slow down a little and try again."},
+            status_code=429,
+        )
+
     # Keep only the most recent turns so the context sent to the model stays bounded.
     history = req.messages[-settings.max_history :]
 
@@ -58,3 +85,21 @@ async def chat(req: ChatRequest):
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+# Serve the built frontend from the same origin when it is present (production /
+# single-container deploys). In local dev the Vite server handles the UI instead.
+_static = Path(settings.static_dir)
+if _static.is_dir():
+    app.mount("/assets", StaticFiles(directory=_static / "assets"), name="assets")
+
+    @app.get("/")
+    def index():
+        return FileResponse(_static / "index.html")
+
+    @app.get("/{path:path}")
+    def spa(path: str):
+        target = _static / path
+        if target.is_file():
+            return FileResponse(target)
+        return FileResponse(_static / "index.html")
