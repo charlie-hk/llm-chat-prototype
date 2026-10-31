@@ -5,6 +5,8 @@ import react from "@vitejs/plugin-react";
 // In dev we proxy /api so the browser sees a same-origin request.
 export default defineConfig({
   plugins: [react()],
+  // Relative base so the build works when served from a GitHub Pages subpath.
+  base: "./",
   server: {
     port: 5173,
     proxy: {

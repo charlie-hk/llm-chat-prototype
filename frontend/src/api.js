@@ -42,3 +42,19 @@ export async function fetchConfig() {
   if (!res.ok) throw new Error("config failed");
   return res.json();
 }
+
+// Used only when no backend is reachable (e.g. the static GitHub Pages demo).
+// Streams a canned reply in the browser so the UI is clickable without a server.
+export async function simulateStream(messages, { onToken }) {
+  const lastUser = [...messages].reverse().find((m) => m.role === "user");
+  const reply =
+    "This is the hosted front-end demo, so replies are simulated in the browser. " +
+    "The real version streams from OpenAI, Anthropic or Gemini through the FastAPI " +
+    "backend in the repository. You said: \"" +
+    (lastUser?.content || "").slice(0, 200) +
+    "\".";
+  for (const word of reply.split(" ")) {
+    await new Promise((r) => setTimeout(r, 35));
+    onToken(word + " ");
+  }
+}

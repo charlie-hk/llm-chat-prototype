@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { streamChat, fetchConfig } from "./api.js";
+import { streamChat, fetchConfig, simulateStream } from "./api.js";
 
 const WELCOME = { role: "assistant", content: "Hi. Ask me anything to get started." };
 
@@ -9,12 +9,17 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [info, setInfo] = useState("");
+  const [demo, setDemo] = useState(false);
   const scrollRef = useRef(null);
 
   useEffect(() => {
+    // No backend reachable (static host) -> run the in-browser demo.
     fetchConfig()
       .then((c) => setInfo(c.model ? `${c.provider} · ${c.model}` : c.provider))
-      .catch(() => setInfo(""));
+      .catch(() => {
+        setDemo(true);
+        setInfo("front-end demo");
+      });
   }, []);
 
   useEffect(() => {
@@ -34,8 +39,10 @@ export default function App() {
     const next = [...history, { role: "user", content: text }];
     setMessages([...messages, { role: "user", content: text }, { role: "assistant", content: "" }]);
 
+    const run = demo ? simulateStream : streamChat;
+
     try {
-      await streamChat(next, {
+      await run(next, {
         onToken: (t) =>
           setMessages((prev) => {
             const copy = [...prev];
@@ -78,6 +85,13 @@ export default function App() {
           New conversation
         </button>
       </header>
+
+      {demo && (
+        <div className="notice">
+          Front-end demo — no backend connected, so replies are simulated. Run the
+          FastAPI backend from the repo for real streaming from OpenAI, Anthropic or Gemini.
+        </div>
+      )}
 
       <main className="thread" ref={scrollRef}>
         {messages.map((m, i) => (

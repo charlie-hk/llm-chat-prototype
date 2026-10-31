@@ -7,6 +7,10 @@ key while you work on the UI.
 
 Author: A. Amini
 
+**Live demo:** https://charlie-hk.github.io/llm-chat-prototype/ — a static front-end
+demo with replies simulated in the browser (a static host cannot run the backend or
+hold an API key). The real version streams from a live model through the backend below.
+
 ## What it does
 
 - Chat interface with streaming replies, token by token
