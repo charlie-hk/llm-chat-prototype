@@ -2,9 +2,9 @@ fastapi>=0.110
 uvicorn[standard]>=0.29
 pydantic>=2.6
 pydantic-settings>=2.2
+httpx>=0.27
 
-# Provider SDKs are optional and imported lazily.
-# Install only the one you plan to use.
+# Optional provider SDKs, imported lazily. Install only the one you use.
+# (Gemini needs no SDK; it uses the REST API over httpx.)
 openai>=1.30
 anthropic>=0.25
-google-generativeai>=0.5
