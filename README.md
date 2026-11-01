@@ -104,7 +104,7 @@ Or Gemini:
 
 ```env
 PROVIDER=gemini
-MODEL=gemini-2.0-flash
+MODEL=gemini-3.8-flash
 API_KEY=...
 ```
 

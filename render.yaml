@@ -7,6 +7,6 @@ services:
       - key: PROVIDER
         value: gemini
       - key: MODEL
-        value: gemini-2.0-flash
+        value: gemini-3.8-flash
       - key: API_KEY
         sync: false
