@@ -18,7 +18,7 @@ COPY --from=web /web/dist ./static
 
 # Defaults for the hosted demo; API_KEY is provided as a secret at runtime.
 ENV PROVIDER=gemini \
-    MODEL=gemini-3.8-flash \
+    MODEL=gemini-2.5-flash \
     STATIC_DIR=/app/static \
     CORS_ORIGINS=* \
     PORT=7860
