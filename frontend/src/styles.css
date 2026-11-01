@@ -40,6 +40,13 @@ body {
   gap: 10px;
 }
 
+.by {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.02em;
+}
+
 .badge {
   font: 500 12px/1 monospace;
   color: var(--muted);

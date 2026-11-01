@@ -57,8 +57,10 @@ def health():
 
 @app.get("/api/config")
 def config():
-    # The UI shows which provider/model is live.
-    return {"provider": provider.name, "model": settings.model or None}
+    # The UI shows which provider/model is live. MODEL may be a fallback chain;
+    # show just the first entry so the badge stays short.
+    first_model = (settings.model or "").split(",")[0].strip() or None
+    return {"provider": provider.name, "model": first_model}
 
 
 @app.get("/api/models")

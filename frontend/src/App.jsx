@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { streamChat, fetchConfig, simulateStream } from "./api.js";
 
-const WELCOME = { role: "assistant", content: "Hi. Ask me anything to get started." };
+const WELCOME = { role: "assistant", content: "Hello, I'm A.Amini. How can I help you?" };
 
 export default function App() {
   const [messages, setMessages] = useState([WELCOME]);
@@ -78,7 +78,8 @@ export default function App() {
     <div className="app">
       <header className="bar">
         <div className="title">
-          LLM Chat Prototype
+          <span>LLM Chat Prototype</span>
+          <span className="by">A.Amini</span>
           {info && <span className="badge">{info}</span>}
         </div>
         <button className="ghost" onClick={reset} disabled={busy}>
