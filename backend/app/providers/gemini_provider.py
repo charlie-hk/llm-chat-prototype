@@ -53,5 +53,7 @@ class GeminiProvider(LLMProvider):
                                     yield text
         except ProviderError:
             raise
+        except httpx.TimeoutException as e:
+            raise ProviderError(f"Gemini timed out ({e.__class__.__name__}).") from e
         except Exception as e:
-            raise ProviderError(str(e)) from e
+            raise ProviderError(f"{e.__class__.__name__}: {e}".strip(": ")) from e

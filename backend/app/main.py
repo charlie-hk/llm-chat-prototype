@@ -1,4 +1,5 @@
 import json
+import logging
 import time
 from collections import defaultdict, deque
 from collections.abc import AsyncIterator
@@ -13,6 +14,8 @@ from app.config import get_settings
 from app.providers.base import ProviderError
 from app.providers.factory import build_provider
 from app.schemas import ChatRequest
+
+log = logging.getLogger("uvicorn.error")
 
 settings = get_settings()
 provider = build_provider(settings)
@@ -76,9 +79,11 @@ async def chat(req: ChatRequest, request: Request):
                 yield sse({"type": "token", "value": token})
             yield sse({"type": "done"})
         except ProviderError as e:
-            yield sse({"type": "error", "message": str(e)})
-        except Exception:
-            yield sse({"type": "error", "message": "Unexpected server error."})
+            log.warning("provider error: %s", e)
+            yield sse({"type": "error", "message": str(e) or "Provider error (see server logs)."})
+        except Exception as e:
+            log.exception("unexpected error in chat stream")
+            yield sse({"type": "error", "message": f"Server error: {e.__class__.__name__}"})
 
     return StreamingResponse(
         event_stream(),
