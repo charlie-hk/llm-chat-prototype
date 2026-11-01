@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: llm-chat-prototype
+    runtime: docker
+    plan: free
+    envVars:
+      - key: PROVIDER
+        value: gemini
+      - key: MODEL
+        value: gemini-1.5-flash
+      - key: API_KEY
+        sync: false
