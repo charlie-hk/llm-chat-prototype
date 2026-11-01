@@ -1,3 +1,4 @@
+import asyncio
 import json
 from collections.abc import AsyncIterator
 
@@ -5,6 +6,10 @@ from app.providers.base import LLMProvider, ProviderError
 from app.schemas import Message
 
 ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent?alt=sse"
+
+# Google returns these when the model is briefly overloaded; a short retry clears it.
+RETRYABLE = {429, 500, 503}
+MAX_ATTEMPTS = 3
 
 
 class GeminiProvider(LLMProvider):
@@ -31,29 +36,42 @@ class GeminiProvider(LLMProvider):
 
         headers = {"x-goog-api-key": self._key, "content-type": "application/json"}
         timeout = httpx.Timeout(60.0, connect=10.0)
+        last_error = "Gemini unavailable."
 
-        try:
-            async with httpx.AsyncClient(timeout=timeout) as client:
-                async with client.stream("POST", url, headers=headers, json=body) as resp:
-                    if resp.status_code != 200:
-                        detail = (await resp.aread()).decode(errors="replace")[:300]
-                        raise ProviderError(f"Gemini {resp.status_code}: {detail}")
-                    async for line in resp.aiter_lines():
-                        line = line.strip()
-                        if not line.startswith("data:"):
+        for attempt in range(MAX_ATTEMPTS):
+            try:
+                async with httpx.AsyncClient(timeout=timeout) as client:
+                    async with client.stream("POST", url, headers=headers, json=body) as resp:
+                        if resp.status_code in RETRYABLE and attempt < MAX_ATTEMPTS - 1:
+                            await resp.aread()
+                            await asyncio.sleep(1.5 * (attempt + 1))
                             continue
-                        payload = line[5:].strip()
-                        if not payload:
-                            continue
-                        data = json.loads(payload)
-                        for cand in data.get("candidates", []):
-                            for part in cand.get("content", {}).get("parts", []):
-                                text = part.get("text")
-                                if text:
-                                    yield text
-        except ProviderError:
-            raise
-        except httpx.TimeoutException as e:
-            raise ProviderError(f"Gemini timed out ({e.__class__.__name__}).") from e
-        except Exception as e:
-            raise ProviderError(f"{e.__class__.__name__}: {e}".strip(": ")) from e
+                        if resp.status_code != 200:
+                            detail = (await resp.aread()).decode(errors="replace")[:300]
+                            raise ProviderError(f"Gemini {resp.status_code}: {detail}")
+                        async for line in resp.aiter_lines():
+                            line = line.strip()
+                            if not line.startswith("data:"):
+                                continue
+                            payload = line[5:].strip()
+                            if not payload:
+                                continue
+                            data = json.loads(payload)
+                            for cand in data.get("candidates", []):
+                                for part in cand.get("content", {}).get("parts", []):
+                                    text = part.get("text")
+                                    if text:
+                                        yield text
+                        return
+            except ProviderError:
+                raise
+            except httpx.TimeoutException as e:
+                last_error = f"Gemini timed out ({e.__class__.__name__})."
+                if attempt < MAX_ATTEMPTS - 1:
+                    await asyncio.sleep(1.5 * (attempt + 1))
+                    continue
+                raise ProviderError(last_error) from e
+            except Exception as e:
+                raise ProviderError(f"{e.__class__.__name__}: {e}".strip(": ")) from e
+
+        raise ProviderError("Gemini is busy right now. Please try again in a moment.")
