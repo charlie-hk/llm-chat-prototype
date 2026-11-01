@@ -61,6 +61,30 @@ def config():
     return {"provider": provider.name, "model": settings.model or None}
 
 
+@app.get("/api/models")
+async def models():
+    # Diagnostic: which Gemini models this key can use for chat.
+    if provider.name != "gemini":
+        return {"note": "only available when PROVIDER=gemini"}
+    import httpx
+
+    url = "https://generativelanguage.googleapis.com/v1beta/models"
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            r = await client.get(url, headers={"x-goog-api-key": settings.api_key})
+            r.raise_for_status()
+            data = r.json()
+    except Exception as e:
+        return {"error": f"{e.__class__.__name__}: {e}"}
+
+    chat_models = [
+        m["name"].replace("models/", "")
+        for m in data.get("models", [])
+        if "generateContent" in m.get("supportedGenerationMethods", [])
+    ]
+    return {"current": settings.model, "chat_models": chat_models}
+
+
 @app.post("/api/chat")
 async def chat(req: ChatRequest, request: Request):
     client = request.client.host if request.client else "unknown"
